@@ -259,6 +259,72 @@ However, if you want to specify it in each example, you can do so
 let(:module_path) { '/path/to/your/module/dir' }
 ```
 
+### Executing resources
+
+Some resource types can be tested in isolation, particularly those that only
+operate on files rather than system-level resources such as packages.  Augeas
+and file editing providers work well.
+
+First define a directory containing input files (fixtures) in `spec_helper.rb`:
+
+```ruby
+RSpec.configure do |c|
+  c.resource_fixtures = '/path/to/your/fixtures/dir'
+end
+```
+Inside a class or define example group, use `run_resource` or `execute_resource`
+(synonyms) with the type and title of the resource to test.
+
+```ruby
+describe_resource 'Augeas[resource title]' do
+  ...
+end
+```
+#### Matchers
+
+Inside a `describe_resource` group, the `execute` matcher will run the resource
+(which is the `subject` inside the group) and provides modifiers to check it
+made a change and/or ran idempotently.
+
+```ruby
+describe_resource 'Augeas[resource title]' do
+  it { should execute.with_change }
+end
+```
+
+`execute` has the following methods to modify its behaviour:
+
+* `with_change` ensures the resource was "applied" and didn't no-op
+* `idempotently` runs the resource again to ensure it applies a maximum of once
+
+#### Utility methods
+
+Helpers are provided to check the modifications made to files after applying
+the resource.  Some require certain options, which can be supplied in the
+`describe_resource` statement or as arguments to the method.
+
+* `output_root` returns the root directory of the modified fixtures
+* `open_target` opens the target file and returns the handle, closes it too if
+  given a block (expects `:target` option)
+
+#### Complete example
+
+This example uses the methods listed above to fully test an Augeas resource:
+
+```ruby
+describe_resource 'Augeas[change PermitRootLogin]' do
+  it do
+    should execute.with_change
+    open_target { |f| f.read.should =~ /^PermitRootLogin\s+yes$/ }
+    should execute.idempotently
+  end
+end
+```
+
+Lines 3 and 5 can be combined into `should execute.with_change.idempotently`,
+but splitting the tests makes it easier to debug issues when a resource
+purports to make a change on every execution, but doesn't.
+
 ## Functions
 
 ### Matchers

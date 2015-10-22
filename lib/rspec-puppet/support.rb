@@ -224,14 +224,17 @@ module RSpec::Puppet
       facts.each { |k, v| Facter.add(k) { setcode { v } } }
     end
 
-    def build_catalog(*args)
-      unless @@cache.has_key? args
+    def build_catalog(nodename, facts_val, hiera_config_val, code)
+      # Cache key should exclude dynamically generated facts
+      cache_key = [nodename, facts_val.dup.delete_if { |k| k == '_timestamp' }, hiera_config_val, code]
+
+      unless @@cache.has_key? cache_key
         # Keep only the most recently added 16 entries to prevent high memory consumption
         expire_cache(@@cache, @@cache_lra, 15)
-        @@cache[args] = self.build_catalog_without_cache(*args)
-        @@cache_lra << args
+        @@cache[cache_key] = self.build_catalog_without_cache(nodename, facts_val, hiera_config_val, code)
+        @@cache_lra << cache_key
       end
-      @@cache[args]
+      @@cache[cache_key]
     end
 
     def expire_cache(cache, lra, max)

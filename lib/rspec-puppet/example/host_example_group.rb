@@ -4,7 +4,7 @@ module RSpec::Puppet
     include RSpec::Puppet::Support
 
     def catalogue
-      @catalogue ||= load_catalogue(:host)
+      load_catalogue(:host)
     end
   end
 end
